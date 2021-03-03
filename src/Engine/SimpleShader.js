@@ -19,6 +19,8 @@ function SimpleShader(vertexShaderPath, fragmentShaderPath) {
     this.mCompiledShader = null;  // reference to the compiled shader in webgl context  
     this.mShaderVertexPositionAttribute = null; // reference to SquareVertexPosition within the shader
     this.mPixelColor = null;                    // reference to the pixelColor uniform in the fragment shader
+    this.mModelTransform = null;                // reference to model transform matrix in vertex shader
+    this.mViewProjTransform = null;             // reference to the View/Projection matrix in the vertex shader
 
     var gl = gEngine.Core.getGL();
 
@@ -55,20 +57,24 @@ function SimpleShader(vertexShaderPath, fragmentShaderPath) {
         0,              // number of bytes to skip in between elements
         0);             // offsets to the first element
 
-    // Step G: Gets a reference to the uniform variable uPixelColor in the fragment shader
+    // Step G: Gets references to the uniform variables: uPixelColor, uModelTransform, and uViewProjTransform
     this.mPixelColor = gl.getUniformLocation(this.mCompiledShader, "uPixelColor");
+    this.mModelTransform = gl.getUniformLocation(this.mCompiledShader, "uModelTransform");
+    this.mViewProjTransform = gl.getUniformLocation(this.mCompiledShader, "uViewProjTransform");
 }
 //</editor-fold>
 
 // <editor-fold desc="Public Methods">
 
+
 // Access to the compiled shader
 SimpleShader.prototype.getShader = function () { return this.mCompiledShader; };
 
 // Activate the shader for rendering
-SimpleShader.prototype.activateShader = function (pixelColor) {
+SimpleShader.prototype.activateShader = function (pixelColor, vpMatrix) {
     var gl = gEngine.Core.getGL();
     gl.useProgram(this.mCompiledShader);
+    gl.uniformMatrix4fv(this.mViewProjTransform, false, vpMatrix);
     gl.bindBuffer(gl.ARRAY_BUFFER, gEngine.VertexBuffer.getGLVertexRef());
     gl.vertexAttribPointer(this.mShaderVertexPositionAttribute,
         3,              // each element is a 3-float (x,y.z)
@@ -79,6 +85,13 @@ SimpleShader.prototype.activateShader = function (pixelColor) {
     gl.enableVertexAttribArray(this.mShaderVertexPositionAttribute);
     gl.uniform4fv(this.mPixelColor, pixelColor);
 };
+// Loads per-object model transform to the vertex shader
+SimpleShader.prototype.loadObjectTransform = function (modelTransform) {
+    var gl = gEngine.Core.getGL();
+        // loads the modelTransform matrix into webGL to be used by the vertex shader
+    gl.uniformMatrix4fv(this.mModelTransform, false, modelTransform);
+};
+
 //-- end of public methods
 // </editor-fold>
 
