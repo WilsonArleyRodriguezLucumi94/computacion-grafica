@@ -18,15 +18,8 @@ gEngine.Core = (function () {
     // The graphical context to draw to
     var mGL = null;
 
-    //**----------------------------
-    // Public methods:
-    //**-----------------------------
-    //
-    // Accessor of the webgl context
-    var getGL = function () { return mGL; };
-
     // initialize the WebGL, the vertex buffer and compile the shaders
-    var initializeWebGL = function (htmlCanvasID) {
+    var _initializeWebGL = function (htmlCanvasID) {
         var canvas = document.getElementById(htmlCanvasID);
 
         // Get the standard or experimental webgl and binds to the Canvas area
@@ -37,9 +30,29 @@ gEngine.Core = (function () {
             document.write("<br><b>WebGL is not supported!</b>");
             return;
         }
+    };
+    
+    //**----------------------------
+    // Public methods:
+    //**-----------------------------
+    //
+    // Accessor of the webgl context
+    var getGL = function () { return mGL; };
 
-        // now initialize the VertexBuffer
+    var startScene = function (scene) {
+        scene.loadScene.call(scene); // Called in this way to keep correct context
+        gEngine.GameLoop.start(scene); // will wait until async loading is done and call scene.initialize()
+    };
+
+    // initialize all of the EngineCore components
+    var initializeEngineCore = function (htmlCanvasID, myGame) {
+        _initializeWebGL(htmlCanvasID);
         gEngine.VertexBuffer.initialize();
+        gEngine.Input.initialize();
+        gEngine.AudioClips.initAudioContext();
+
+        // Inits DefaultResources, when done, invoke the anonymous function to call startScene(myGame).
+        gEngine.DefaultResources.initialize(function () { startScene(myGame); });
     };
 
     // Clears the draw area and draws one square
@@ -48,12 +61,19 @@ gEngine.Core = (function () {
         mGL.clear(mGL.COLOR_BUFFER_BIT);      // clear to the color previously set
     };
 
+    var inheritPrototype = function (subClass, superClass) {
+        var prototype = Object.create(superClass.prototype);
+        prototype.constructor = subClass;
+        subClass.prototype = prototype;
+    };
     // -- end of public methods
 
     var mPublic = {
         getGL: getGL,
-        initializeWebGL: initializeWebGL,
-        clearCanvas: clearCanvas
+        initializeEngineCore: initializeEngineCore,
+        clearCanvas: clearCanvas,
+        inheritPrototype: inheritPrototype,
+        startScene: startScene
     };
 
     return mPublic;
