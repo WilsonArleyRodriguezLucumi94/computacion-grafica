@@ -1,83 +1,114 @@
 /*
  * File: MyGame.js 
- * This is the logic of our game. For now, this is very simple.
+ * This is the logic of our game. 
  */
 /*jslint node: true, vars: true */
-/*global gEngine: false, SimpleShader: false, Renderable: false, Camera: false, mat4: false, vec3: false, vec2: false */
+/*global gEngine: false, Scene: false, BlueLevel: false, Camera: false, Renderable: false, vec2: false */
 /* find out more about jslint: http://www.jslint.com/help.html */
 
 "use strict";  // Operate in Strict mode such that variables must be declared before used!
 
-function MyGame(htmlCanvasID) {
-    // variables of the shader for drawing: one shader to be shared by two renderables
-    this.mConstColorShader = null;
+function MyGame() {
+     // audio clips: supports both mp3 and wav formats
+    this.kBgClip = "assets/sounds/BGClip.mp3";
+    this.kCue = "assets/sounds/MyGame_cue.wav";
 
-    // variables for the squares
-    this.mBlueSq = null;        // these are the Renderable objects
-    this.mRedSq = null;
+    // The camera to view the scene
+    this.mCamera = null;
 
-    // Step A: Initialize the webGL Context
-    gEngine.Core.initializeWebGL(htmlCanvasID);
+    // the hero and the support objects
+    this.mHero = null;
+    this.mSupport = null;
+}
+gEngine.Core.inheritPrototype(MyGame, Scene);
 
-    // Step B: Setup the camera
+MyGame.prototype.loadScene = function () {
+   // loads the audios
+    gEngine.AudioClips.loadAudio(this.kBgClip);
+    gEngine.AudioClips.loadAudio(this.kCue);
+};
+
+
+MyGame.prototype.unloadScene = function() {
+    // Step A: Game loop not running, unload all assets
+    // stop the background audio
+    gEngine.AudioClips.stopBackgroundAudio();
+
+    // unload the scene resources
+    // gEngine.AudioClips.unloadAudio(this.kBgClip);
+    //      You know this clip will be used elsewhere in the game
+    //      So you decide to not unload this clip!!
+    gEngine.AudioClips.unloadAudio(this.kCue);
+
+    // Step B: starts the next level
+    // starts the next level
+    var nextLevel = new BlueLevel();  // next level to be loaded
+    gEngine.Core.startScene(nextLevel);
+};
+
+MyGame.prototype.initialize = function () {
+    // Step A: set up the cameras
     this.mCamera = new Camera(
-        vec2.fromValues(20, 60),   // center of the WC
-        20,                        // width of WC
+        vec2.fromValues(20, 60),   // position of the camera
+        20,                        // width of camera
         [20, 40, 600, 300]         // viewport (orgX, orgY, width, height)
         );
+    this.mCamera.setBackgroundColor([0.8, 0.8, 0.8, 1]);
+            // sets the background to gray
 
-    // Step C: Create the shader
-    this.mConstColorShader = new SimpleShader(
-        "src/GLSLShaders/SimpleVS.glsl",      // Path to the VertexShader 
-        "src/GLSLShaders/SimpleFS.glsl");    // Path to the simple FragmentShader
+    // Step B: Create the support object in red
+    this.mSupport = new Renderable(gEngine.DefaultResources.getConstColorShader());
+    this.mSupport.setColor([0.8, 0.2, 0.2, 1]);
+    this.mSupport.getXform().setPosition(20, 60);
+    this.mSupport.getXform().setSize(5, 5);
 
-    // Step D: Create the Renderable objects:
-    this.mBlueSq = new Renderable(this.mConstColorShader);
-    this.mBlueSq.setColor([0.25, 0.25, 0.95, 1]);
-    this.mRedSq = new Renderable(this.mConstColorShader);
-    this.mRedSq.setColor([0.95, 0.25, 0.25, 1]);
-    this.mTLSq = new Renderable(this.mConstColorShader);
-    this.mTLSq.setColor([0.9, 0.1, 0.1, 1]);
-    this.mTRSq = new Renderable(this.mConstColorShader);
-    this.mTRSq.setColor([0.1, 0.9, 0.1, 1]);
-    this.mBRSq = new Renderable(this.mConstColorShader);
-    this.mBRSq.setColor([0.1, 0.1, 0.9, 1]);
-    this.mBLSq = new Renderable(this.mConstColorShader);
-    this.mBLSq.setColor([0.1, 0.1, 0.1, 1]);
+    // Setp C: Create the hero object in blue
+    this.mHero = new Renderable(gEngine.DefaultResources.getConstColorShader());
+    this.mHero.setColor([0, 0, 1, 1]);
+    this.mHero.getXform().setPosition(20, 60);
+    this.mHero.getXform().setSize(2, 3);
 
-    // Step E: Clear the canvas
-    gEngine.Core.clearCanvas([0.9, 0.9, 0.9, 1]);        // Clear the canvas
+    // now start the bg music ...
+    gEngine.AudioClips.playBackgroundAudio(this.kBgClip);
+};
 
-    // Step F: Starts the drawing by activating the camera
+// This is the draw function, make sure to setup proper drawing environment, and more
+// importantly, make sure to _NOT_ change any state.
+MyGame.prototype.draw = function () {
+    // Step A: clear the canvas
+    gEngine.Core.clearCanvas([0.9, 0.9, 0.9, 1.0]); // clear to light gray
+
+    // Step  B: Activate the drawing Camera
     this.mCamera.setupViewProjection();
-    var vpMatrix = this.mCamera.getVPMatrix();
 
-    // Step G: Draw the blue square
-    // Centre Blue, slightly rotated square
-    this.mBlueSq.getXform().setPosition(20, 60);
-    this.mBlueSq.getXform().setRotationInRad(0.2); // In Radians
-    this.mBlueSq.getXform().setSize(5, 5);
-    this.mBlueSq.draw(vpMatrix);
+    // Step  C: draw everything
+    this.mSupport.draw(this.mCamera.getVPMatrix());
+    this.mHero.draw(this.mCamera.getVPMatrix());
+};
 
-    // Step H: Draw the center and the corner squares
-    // centre red square
-    this.mRedSq.getXform().setPosition(20, 60);
-    this.mRedSq.getXform().setSize(2, 2);
-    this.mRedSq.draw(vpMatrix);
+// The update function, updates the application state. Make sure to _NOT_ draw
+// anything from this function!
+MyGame.prototype.update = function () {
+    // let's only allow the movement of hero, 
+    // and if hero moves too far off, this level ends, we will
+    // load the next level
+    var deltaX = 0.05;
+    var xform = this.mHero.getXform();
 
-    // top left
-    this.mTLSq.getXform().setPosition(10, 65);
-    this.mTLSq.draw(vpMatrix);
+    // Support hero movements
+    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Right)) {
+        gEngine.AudioClips.playACue(this.kCue);
+        xform.incXPosBy(deltaX);
+        if (xform.getXPos() > 30) { // this is the right-bound of the window
+            xform.setPosition(12, 60);
+        }
+    }
 
-    // top right
-    this.mTRSq.getXform().setPosition(30, 65);
-    this.mTRSq.draw(vpMatrix);
-
-    // bottom right
-    this.mBRSq.getXform().setPosition(30, 55);
-    this.mBRSq.draw(vpMatrix);
-
-    // bottom left
-    this.mBLSq.getXform().setPosition(10, 55);
-    this.mBLSq.draw(vpMatrix);
-}
+    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Left)) {
+        gEngine.AudioClips.playACue(this.kCue);
+        xform.incXPosBy(-deltaX);
+        if (xform.getXPos() < 11) {  // this is the left-bound of the window
+            gEngine.GameLoop.stop();
+        }
+    }
+};
