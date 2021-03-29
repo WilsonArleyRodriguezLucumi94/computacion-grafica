@@ -52,7 +52,7 @@ MyGame.prototype.initialize = function () {
         100,                       // width of camera
         [0, 0, 640, 480]           // viewport (orgX, orgY, width, height)
     );
-    this.mCamera.setBackgroundColor([0.8, 0.8, 0.8, 1]);
+    this.mCamera.setBackgroundColor([2, 0.8, 0.8, 1]);
             // sets the background to gray
 
     this.mBrain = new Brain(this.kMinionSprite);
@@ -66,9 +66,9 @@ MyGame.prototype.initialize = function () {
     this.mHeroHit.setVisibility(false);
 
     this.mPortal = new TextureObject(this.kMinionPortal, 50, 30, 10, 10);
-
-    this.mLMinion = new Minion(this.kMinionSprite, 30, 30);
-    this.mRMinion = new Minion(this.kMinionSprite, 70, 30);
+//posiciones
+    this.mLMinion = new Minion(this.kMinionSprite, 40, 20);
+    this.mRMinion = new Minion(this.kMinionSprite, 50, 30);
 
     this.mMsg = new FontRenderable("Status Message");
     this.mMsg.setColor([0, 0, 0, 1]);
