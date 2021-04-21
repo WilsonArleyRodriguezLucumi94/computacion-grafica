@@ -4,141 +4,105 @@
  */
 
 /*jslint node: true, vars: true */
-/*global gEngine: false, Scene: false, SpriteRenderable: false, Camera: false, vec2: false,
-  TextureRenderable: false, Renderable: false, SpriteAnimateRenderable: false, GameOver: false,
-  FontRenderable: false */
+/*global gEngine, Scene, GameObjectset, TextureObject, Camera, vec2,
+  FontRenderable, SpriteRenderable, DyePack, Hero, Minion, Brain,
+  GameObject */
 /* find out more about jslint: http://www.jslint.com/help.html */
 
 "use strict";  // Operate in Strict mode such that variables must be declared before used!
 
 function MyGame() {
-    // textures: 
-    this.kFontImage = "assets/Consolas-72.png";
     this.kMinionSprite = "assets/minion_sprite.png";
-
-    // the fonts
-    this.kFontCon16 = "assets/fonts/Consolas-16";  // notice font names do not need extensions!
-    this.kFontCon24 = "assets/fonts/Consolas-24";
-    this.kFontCon32 = "assets/fonts/Consolas-32";  // this is also the default system font
-    this.kFontCon72 = "assets/fonts/Consolas-72";
-    this.kFontSeg96 = "assets/fonts/Segment7-96";
+    this.kMinionPortal = "assets/minion_portal.png";
+    this.kBg = "assets/bg.png";
 
     // The camera to view the scene
     this.mCamera = null;
+    this.mHeroCam = null;
+    this.mBrainCam = null;
+    this.mBg = null;
+
+    this.mMsg = null;
 
     // the hero and the support objects
     this.mHero = null;
-    this.mFontImage = null;
-    this.mMinion = null;
+    this.mBrain = null;
+    this.mPortal = null;
+    this.mLMinion = null;
+    this.mRMinion = null;
+    this.mFocusObj = null;
 
-    this.mTextSysFont = null;
-    this.mTextCon16 = null;
-    this.mTextCon24 = null;
-    this.mTextCon32 = null;
-    this.mTextCon72 = null;
-    this.mTextSeg96 = null;
-
-    this.mTextToWork = null;
+    this.mChoice = 'D';
 }
 gEngine.Core.inheritPrototype(MyGame, Scene);
 
 MyGame.prototype.loadScene = function () {
-    // Step A: loads the textures    
-    gEngine.Textures.loadTexture(this.kFontImage);
     gEngine.Textures.loadTexture(this.kMinionSprite);
-
-    // Step B: loads all the fonts
-    gEngine.Fonts.loadFont(this.kFontCon16);
-    gEngine.Fonts.loadFont(this.kFontCon24);
-    gEngine.Fonts.loadFont(this.kFontCon32);
-    gEngine.Fonts.loadFont(this.kFontCon72);
-    gEngine.Fonts.loadFont(this.kFontSeg96);
+    gEngine.Textures.loadTexture(this.kMinionPortal);
+    gEngine.Textures.loadTexture(this.kBg);
 };
 
 MyGame.prototype.unloadScene = function () {
-    gEngine.Textures.unloadTexture(this.kFontImage);
     gEngine.Textures.unloadTexture(this.kMinionSprite);
-
-    // unload the fonts
-    gEngine.Fonts.unloadFont(this.kFontCon16);
-    gEngine.Fonts.unloadFont(this.kFontCon24);
-    gEngine.Fonts.unloadFont(this.kFontCon32);
-    gEngine.Fonts.unloadFont(this.kFontCon72);
-    gEngine.Fonts.unloadFont(this.kFontSeg96);
-
-    // Step B: starts the next level
-    var nextLevel = new GameOver();  // next level to be loaded
-    gEngine.Core.startScene(nextLevel);
+    gEngine.Textures.unloadTexture(this.kMinionPortal);
+    gEngine.Textures.unloadTexture(this.kBg);
 };
 
 MyGame.prototype.initialize = function () {
     // Step A: set up the cameras
     this.mCamera = new Camera(
-        vec2.fromValues(50, 33),   // position of the camera
+        vec2.fromValues(50, 36), // position of the camera
         100,                       // width of camera
-        [0, 0, 600, 400]           // viewport (orgX, orgY, width, height)
+        [0, 0, 640, 330]           // viewport (orgX, orgY, width, height)
     );
     this.mCamera.setBackgroundColor([0.8, 0.8, 0.8, 1]);
             // sets the background to gray
 
-    // Step B: Create the font and minion images using sprite
-    this.mFontImage = new SpriteRenderable(this.kFontImage);
-    this.mFontImage.setColor([1, 1, 1, 0]);
-    this.mFontImage.getXform().setPosition(15, 50);
-    this.mFontImage.getXform().setSize(20, 20);
+    this.mHeroCam = new Camera(
+        vec2.fromValues(50, 30),    // will be updated at each cycle to point to hero
+        20,
+        [490, 330, 150, 150],
+        2                           // viewport bounds
+    );
+    this.mHeroCam.setBackgroundColor([0.85, 0.8, 0.8, 1]);
+    this.mBrainCam = new Camera(
+        vec2.fromValues(50, 30),    // will be updated at each cycle to point to the brain
+        10,
+        [0, 330, 150, 150],
+        2                           // viewport bounds
+    );
+    this.mBrainCam.setBackgroundColor([0.8, 0.8, 0.85, 1]);
+    this.mBrainCam.configInterpolation(0.7, 10);
+    // Large background image
+    var bgR = new SpriteRenderable(this.kBg);
+    bgR.setElementPixelPositions(0, 1024, 0, 1024);
+    bgR.getXform().setSize(150, 150);
+    bgR.getXform().setPosition(50, 35);
+    this.mBg = new GameObject(bgR);
 
-    // The right minion
-    this.mMinion = new SpriteAnimateRenderable(this.kMinionSprite);
-    this.mMinion.setColor([1, 1, 1, 0]);
-    this.mMinion.getXform().setPosition(15, 25);
-    this.mMinion.getXform().setSize(24, 19.2);
-    this.mMinion.setSpriteSequence(512, 0,     // first element pixel position: top-left 512 is top of image, 0 is left of image
-                                    204, 164,    // widthxheight in pixels
-                                    5,          // number of elements in this sequence
-                                    0);         // horizontal padding in between
-    this.mMinion.setAnimationType(SpriteAnimateRenderable.eAnimationType.eAnimateSwing);
-    this.mMinion.setAnimationSpeed(15);
-                                // show each element for mAnimSpeed updates
+    // Objects in the scene
+    this.mBrain = new Brain(this.kMinionSprite);
+    this.mHero = new Hero(this.kMinionSprite);
+    this.mPortal = new TextureObject(this.kMinionPortal, 50, 30, 10, 10);
+    this.mLMinion = new Minion(this.kMinionSprite, 30, 30);
+    this.mRMinion = new Minion(this.kMinionSprite, 70, 30);
+    this.mFocusObj = this.mHero;
 
-    // Step D: Create the hero object with texture from the lower-left corner 
-    this.mHero = new SpriteRenderable(this.kMinionSprite);
-    this.mHero.setColor([1, 1, 1, 0]);
-    this.mHero.getXform().setPosition(35, 50);
-    this.mHero.getXform().setSize(12, 18);
-    this.mHero.setElementPixelPositions(0, 120, 0, 180);
-
-    //<editor-fold desc="Create the fonts!">
-    this.mTextSysFont = new FontRenderable("System Font: in Red");
-    this._initText(this.mTextSysFont, 50, 60, [1, 0, 0, 1], 3);
-
-    this.mTextCon16 = new FontRenderable("Consolas 16: in black");
-    this.mTextCon16.setFont(this.kFontCon16);
-    this._initText(this.mTextCon16, 50, 55, [0, 0, 0, 1], 2);
-
-    this.mTextCon24 = new FontRenderable("Consolas 24: in black");
-    this.mTextCon24.setFont(this.kFontCon24);
-    this._initText(this.mTextCon24, 50, 50, [0, 0, 0, 1], 3);
-
-    this.mTextCon32 = new FontRenderable("Consolas 32: in white");
-    this.mTextCon32.setFont(this.kFontCon32);
-    this._initText(this.mTextCon32, 40, 40, [1, 1, 1, 1], 4);
-
-    this.mTextCon72 = new FontRenderable("Consolas 72: in blue");
-    this.mTextCon72.setFont(this.kFontCon72);
-    this._initText(this.mTextCon72, 30, 30, [0, 0, 1, 1], 6);
-
-    this.mTextSeg96  = new FontRenderable("Segment7-92");
-    this.mTextSeg96.setFont(this.kFontSeg96);
-    this._initText(this.mTextSeg96, 30, 15, [1, 1, 0, 1], 7);
-    //</editor-fold>
-
-    this.mTextToWork = this.mTextCon16;
+    this.mMsg = new FontRenderable("Status Message");
+    this.mMsg.setColor([1, 1, 1, 1]);
+    this.mMsg.getXform().setPosition(1, 14);
+    this.mMsg.setTextHeight(3);
 };
 
-MyGame.prototype._initText = function (font, posX, posY, color, textH) {
-    font.setColor(color);
-    font.getXform().setPosition(posX, posY);
-    font.setTextHeight(textH);
+
+MyGame.prototype.drawCamera = function (camera) {
+    camera.setupViewProjection();
+    this.mBg.draw(camera);
+    this.mHero.draw(camera);
+    this.mBrain.draw(camera);
+    this.mPortal.draw(camera);
+    this.mLMinion.draw(camera);
+    this.mRMinion.draw(camera);
 };
 
 // This is the draw function, make sure to setup proper drawing environment, and more
@@ -147,113 +111,112 @@ MyGame.prototype.draw = function () {
     // Step A: clear the canvas
     gEngine.Core.clearCanvas([0.9, 0.9, 0.9, 1.0]); // clear to light gray
 
-    // Step  B: Activate the drawing Camera
-    this.mCamera.setupViewProjection();
-
-    // Step  C: Draw everything
-    this.mHero.draw(this.mCamera.getVPMatrix());
-    this.mFontImage.draw(this.mCamera.getVPMatrix());
-    this.mMinion.draw(this.mCamera.getVPMatrix());
-
-    // drawing the text output
-    this.mTextSysFont.draw(this.mCamera.getVPMatrix());
-    this.mTextCon16.draw(this.mCamera.getVPMatrix());
-    this.mTextCon24.draw(this.mCamera.getVPMatrix());
-    this.mTextCon32.draw(this.mCamera.getVPMatrix());
-    this.mTextCon72.draw(this.mCamera.getVPMatrix());
-    this.mTextSeg96.draw(this.mCamera.getVPMatrix());
+    // Step  B: Draw with all three cameras
+    this.drawCamera(this.mCamera);
+    this.mMsg.draw(this.mCamera);   // only draw status in the main camera
+    this.drawCamera(this.mHeroCam);
+    this.drawCamera(this.mBrainCam);
 };
 
-// The 
-//  function, updates the application state. Make sure to _NOT_ draw
+// The Update function, updates the application state. Make sure to _NOT_ draw
 // anything from this function!
 MyGame.prototype.update = function () {
-    // let's only allow the movement of hero, 
-    // and if hero moves too far off, this level ends, we will
-    // load the next level
-    var deltaX = 0.5;
-    var xform = this.mHero.getXform();
+    var zoomDelta = 0.05;
+    var msg = "L/R: Left or Right Minion; H: Dye; P: Portal]: ";
 
-    // Support hero movements
-    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Right)) {
-        xform.incXPosBy(deltaX);
-        if (xform.getXPos() > 100) { // this is the right-bound of the window
-            xform.setPosition(0, 50);
-        }
-    }
+    this.mCamera.update();  // for smoother camera movements
+    this.mHeroCam.update();
+    this.mBrainCam.update();
 
-    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Left)) {
-        xform.incXPosBy(-deltaX);
-        if (xform.getXPos() < 0) {  // this is the left-bound of the window
-            gEngine.GameLoop.stop();
-        }
-    }
+    this.mLMinion.update();  // for sprite animation
+    this.mRMinion.update();
 
-    // New update code for changing the sub-texture regions being shown"
-    var deltaT = 0.001;
-
-    // <editor-fold desc="The font image:">
-    // zoom into the texture by updating texture coordinate
-    // For font: zoom to the upper left corner by changing bottom right
-    var texCoord = this.mFontImage.getElementUVCoordinateArray();
-            // The 8 elements:
-            //      mTexRight,  mTexTop,          // x,y of top-right
-            //      mTexLeft,   mTexTop,
-            //      mTexRight,  mTexBottom,
-            //      mTexLeft,   mTexBottom
-    var b = texCoord[SpriteRenderable.eTexCoordArray.eBottom] + deltaT;
-    var r = texCoord[SpriteRenderable.eTexCoordArray.eRight] - deltaT;
-    if (b > 1.0) {
-        b = 0;
-    }
-    if (r < 0) {
-        r = 1.0;
-    }
-    this.mFontImage.setElementUVCoordinate(
-        texCoord[SpriteRenderable.eTexCoordArray.eLeft],
-        r,
-        b,
-        texCoord[SpriteRenderable.eTexCoordArray.eTop]
+    this.mHero.update();     // for WASD movement
+    this.mPortal.update(     // for arrow movement
+        gEngine.Input.keys.Up,
+        gEngine.Input.keys.Down,
+        gEngine.Input.keys.Left,
+        gEngine.Input.keys.Right
     );
-    // </editor-fold>
 
-    // remember to update this.mMinion's animation
-    this.mMinion.updateAnimation();
-
-    // interactive control of the display size
-
-    // choose which text to work on
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Zero)) {
-        this.mTextToWork = this.mTextCon16;
-    }
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.One)) {
-        this.mTextToWork = this.mTextCon24;
-    }
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Three)) {
-        this.mTextToWork = this.mTextCon32;
-    }
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Four)) {
-        this.mTextToWork = this.mTextCon72;
+    // Brain chasing the hero
+    var h = [];
+    if (!this.mHero.pixelTouches(this.mBrain, h)) {
+        this.mBrain.rotateObjPointTo(this.mHero.getXform().getPosition(), 0.01);
+        GameObject.prototype.update.call(this.mBrain);
     }
 
-    var deltaF = 0.005;
-    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Up)) {
-        if (gEngine.Input.isKeyPressed(gEngine.Input.keys.X)) {
-            this.mTextToWork.getXform().incWidthBy(deltaF);
+    // Pan camera to object
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.L)) {
+        this.mFocusObj = this.mLMinion;
+        this.mChoice = 'L';
+        this.mCamera.panTo(this.mLMinion.getXform().getXPos(), this.mLMinion.getXform().getYPos());
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.R)) {
+        this.mFocusObj = this.mRMinion;
+        this.mChoice = 'R';
+        this.mCamera.panTo(this.mRMinion.getXform().getXPos(), this.mRMinion.getXform().getYPos());
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.P)) {
+        this.mFocusObj = this.mPortal;
+        this.mChoice = 'P';
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.H)) {
+        this.mFocusObj = this.mHero;
+        this.mChoice = 'H';
+    }
+
+    // zoom
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.N)) {
+        this.mCamera.zoomBy(1 - zoomDelta);
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.M)) {
+        this.mCamera.zoomBy(1 + zoomDelta);
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.J)) {
+        this.mCamera.zoomTowards(this.mFocusObj.getXform().getPosition(), 1 - zoomDelta);
+    }
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.K)) {
+        this.mCamera.zoomTowards(this.mFocusObj.getXform().getPosition(), 1 + zoomDelta);
+    }
+
+    // interaction with the WC bound
+    this.mCamera.clampAtBoundary(this.mBrain.getXform(), 0.9);
+    this.mCamera.clampAtBoundary(this.mPortal.getXform(), 0.8);
+    this.mCamera.panWith(this.mHero.getXform(), 0.9);
+
+    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Q)) {
+        this.mCamera.shake(-2, -2, 20, 30);
+    }
+
+    // set the hero and brain cams    
+    this.mHeroCam.panTo(this.mHero.getXform().getXPos(), this.mHero.getXform().getYPos());
+    this.mBrainCam.panTo(this.mBrain.getXform().getXPos(), this.mBrain.getXform().getYPos());
+
+    msg = "";
+    // testing the mouse input
+    if (gEngine.Input.isButtonPressed(gEngine.Input.mouseButton.Left)) {
+        msg += "[L Down]";
+        if (this.mCamera.isMouseInViewport()) {
+            this.mPortal.getXform().setXPos(this.mCamera.mouseWCX());
+            this.mPortal.getXform().setYPos(this.mCamera.mouseWCY());
         }
-        if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Y)) {
-            this.mTextToWork.getXform().incHeightBy(deltaF);
-        }
-        this.mTextSysFont.setText(this.mTextToWork.getXform().getWidth().toFixed(2) + "x" + this.mTextToWork.getXform().getHeight().toFixed(2));
     }
 
-    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Down)) {
-        if (gEngine.Input.isKeyPressed(gEngine.Input.keys.X)) {
-            this.mTextToWork.getXform().incWidthBy(-deltaF);
+    if (gEngine.Input.isButtonPressed(gEngine.Input.mouseButton.Middle)) {
+        if (this.mHeroCam.isMouseInViewport()) {
+            this.mHero.getXform().setXPos(this.mHeroCam.mouseWCX());
+            this.mHero.getXform().setYPos(this.mHeroCam.mouseWCY());
         }
-        if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Y)) {
-            this.mTextToWork.getXform().incHeightBy(-deltaF);
-        }
-        this.mTextSysFont.setText(this.mTextToWork.getXform().getWidth().toFixed(2) + "x" + this.mTextToWork.getXform().getHeight().toFixed(2));
     }
+    if (gEngine.Input.isButtonClicked(gEngine.Input.mouseButton.Right)) {
+        this.mPortal.setVisibility(false);
+    }
+
+    if (gEngine.Input.isButtonClicked(gEngine.Input.mouseButton.Middle)) {
+        this.mPortal.setVisibility(true);
+    }
+
+    msg += " X=" + gEngine.Input.getMousePosX() + " Y=" + gEngine.Input.getMousePosY();
+    this.mMsg.setText(msg);
 };
