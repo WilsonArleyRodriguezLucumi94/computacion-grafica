@@ -8,6 +8,16 @@
 /* find out more about jslint: http://www.jslint.com/help.html */
 "use strict";
 
+
+// Information to be updated once per render for efficiency concerns
+function PerRenderCache() {
+    this.mWCToPixelRatio = 1;  // WC to pixel transformation
+    this.mCameraOrgX = 1; // Lower-left corner of camera in WC 
+    this.mCameraOrgY = 1;
+    this.mCameraPosInPixelSpace = vec3.fromValues(0, 0, 0); //
+}
+
+
 // wcCenter: is a vec2
 // wcWidth: is the width of the user defined WC
 //      Height of the user defined WC is implicitly defined by the viewport aspect ratio
@@ -33,7 +43,9 @@ function Camera(wcCenter, wcWidth, viewportArray, bound) {
     this.setViewport(viewportArray, this.mViewportBound);
     this.mNearPlane = 0;
     this.mFarPlane = 1000;
-
+    
+    this.kCameraZ = 10;  // This is for illumination computation
+    
     // transformation matrices
     this.mViewMatrix = mat4.create();
     this.mProjMatrix = mat4.create();
@@ -41,6 +53,14 @@ function Camera(wcCenter, wcWidth, viewportArray, bound) {
 
     // background color
     this.mBgColor = [0.8, 0.8, 0.8, 1]; // RGB and Alpha
+
+    // per-rendering cached information
+    // needed for computing transforms for shaders
+    // updated each time in SetupViewProjection()
+    this.mRenderCache = new PerRenderCache();
+        // SHOULD NOT be used except 
+        // xform operations during the rendering
+        // Client game should not access this!
 }
 
 Camera.eViewport = Object.freeze({
@@ -57,6 +77,7 @@ Camera.prototype.setWCCenter = function (xPos, yPos) {
     var p = vec2.fromValues(xPos, yPos);
     this.mCameraState.setCenter(p);
 };
+Camera.prototype.getPosInPixelSpace = function () { return this.mRenderCache.mCameraPosInPixelSpace; };
 Camera.prototype.getWCCenter = function () { return this.mCameraState.getCenter(); };
 Camera.prototype.setWCWidth = function (width) { this.mCameraState.setWidth(width); };
 Camera.prototype.getWCWidth = function () { return this.mCameraState.getWidth(); };
@@ -131,7 +152,7 @@ Camera.prototype.setupViewProjection = function () {
     }
 
     mat4.lookAt(this.mViewMatrix,
-        [center[0], center[1], 10],   // WC center
+        [center[0], center[1], this.kCameraZ],   // WC center
         [center[0], center[1], 0],    // 
         [0, 1, 0]);     // orientation
 
@@ -150,6 +171,15 @@ Camera.prototype.setupViewProjection = function () {
     // Step B3: concatenate view and project matrices
     mat4.multiply(this.mVPMatrix, this.mProjMatrix, this.mViewMatrix);
     //</editor-fold>
+
+    // Step B4: compute and cache per-rendering information
+    this.mRenderCache.mWCToPixelRatio = this.mViewport[Camera.eViewport.eWidth] / this.getWCWidth();
+    this.mRenderCache.mCameraOrgX = center[0] - (this.getWCWidth() / 2);
+    this.mRenderCache.mCameraOrgY = center[1] - (this.getWCHeight() / 2);
+    var p = this.wcPosToPixel(this.getWCCenter());
+    this.mRenderCache.mCameraPosInPixelSpace[0] = p[0];
+    this.mRenderCache.mCameraPosInPixelSpace[1] = p[1];
+    this.mRenderCache.mCameraPosInPixelSpace[2] = this.fakeZInPixelSpace(this.kCameraZ);
 };
 
 Camera.prototype.collideWCBound = function (aXform, zone) {

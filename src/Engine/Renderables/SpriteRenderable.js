@@ -79,6 +79,7 @@ SpriteRenderable.prototype.draw = function (aCamera) {
     this.mShader.setTextureCoordinate(this.getElementUVCoordinateArray());
     TextureRenderable.prototype.draw.call(this, aCamera);
 };
+
 //--- end of Public Methods
 //
 //</editor-fold>
