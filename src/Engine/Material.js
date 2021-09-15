@@ -12,7 +12,7 @@
 function Material() {
     this.mKa = vec4.fromValues(0.0, 0.0, 0.0, 0);
     this.mKs = vec4.fromValues(0.2, 0.2, 0.2, 1);
-    this.mKd = vec4.fromValues(1.0, 1.0, 1.0, 1);//5, 5, 5, 
+    this.mKd = vec4.fromValues(1.0, 1.0, 1.0, 1);
     this.mShininess = 20;
 }
 

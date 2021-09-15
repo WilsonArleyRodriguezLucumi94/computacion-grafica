@@ -4,192 +4,199 @@
  */
 
 /*jslint node: true, vars: true, white: true */
-/*global gEngine, Scene, GameObjectset, TextureObject, Camera, vec2,
-  Renderable, FontRenderable, SpriteRenderable, LightRenderable, IllumRenderable,
-  GameObject, Hero, Minion, Dye, Light */
+/*global gEngine, Scene, GameObjectSet, TextureObject, Camera, vec2,
+  FontRenderable, ParticleGameObjectSet, ParticleEmitter
+  GameObject, Hero, Minion, Dye, Platform, Wall, DyePack, Particle */
 /* find out more about jslint: http://www.jslint.com/help.html */
 
 "use strict";  // Operate in Strict mode such that variables must be declared before used!
 
 function MyGame() {
     this.kMinionSprite = "assets/minion_sprite.png";
-    this.kMinionSpriteNormal = "assets/minion_sprite_normal.png";
-    this.kBg = "assets/bg.png";
-    this.kBgNormal = "assets/bg_normal.png";
+    this.kPlatformTexture = "assets/platform.png";
+    this.kWallTexture = "assets/wall.png";
+    this.kDyePackTexture = "assets/dye_pack.png";
+    this.kParticleTexture = "assets/particle.png";
+    this.kPrompt = "RigidBody Physics!";
 
     // The camera to view the scene
     this.mCamera = null;
-    this.mBg = null;
 
     this.mMsg = null;
-    this.mMatMsg = null;
 
     // the hero and the support objects
-    this.mLgtHero = null;
-    this.mIllumHero = null;
-
-    this.mLgtMinion = null;
-    this.mIllumMinion = null;
-
-    this.mGlobalLightSet = null;
-
-    this.mBlock1 = null;   // to verify swiitching between shaders is fine
-    this.mBlock2 = null;
-
-    this.mLgtIndex = 0;
-    this.mLgtRotateTheta = 0;
+    this.mHero = null;
     
-    // shadow support
-    this.mBgShadow = null;
-    this.mMinionShadow = null;
+    this.mCollidedObj = null;
+    this.mAllPlatforms = new GameObjectSet();
+    this.mAllMinions = new GameObjectSet();
+    this.mAllDyePacks = new GameObjectSet();
+    this.mAllParticles = new ParticleGameObjectSet();
 }
 gEngine.Core.inheritPrototype(MyGame, Scene);
 
 MyGame.prototype.loadScene = function () {
     gEngine.Textures.loadTexture(this.kMinionSprite);
-    gEngine.Textures.loadTexture(this.kBg);
-    gEngine.Textures.loadTexture(this.kBgNormal);
-    gEngine.Textures.loadTexture(this.kMinionSpriteNormal);
+    gEngine.Textures.loadTexture(this.kPlatformTexture);
+    gEngine.Textures.loadTexture(this.kWallTexture);
+    gEngine.Textures.loadTexture(this.kDyePackTexture);
+    gEngine.Textures.loadTexture(this.kParticleTexture);
 };
 
-MyGame.prototype.unloadScene = function () {
-    gEngine.LayerManager.cleanUp();
-    
+MyGame.prototype.unloadScene = function () {    
     gEngine.Textures.unloadTexture(this.kMinionSprite);
-    gEngine.Textures.unloadTexture(this.kBg);
-    gEngine.Textures.unloadTexture(this.kBgNormal);
-    gEngine.Textures.unloadTexture(this.kMinionSpriteNormal);
+    gEngine.Textures.unloadTexture(this.kPlatformTexture);
+    gEngine.Textures.unloadTexture(this.kWallTexture);
+    gEngine.Textures.unloadTexture(this.kDyePackTexture);
+    gEngine.Textures.unloadTexture(this.kParticleTexture);
 };
 
 MyGame.prototype.initialize = function () {
     // Step A: set up the cameras
     this.mCamera = new Camera(
-        vec2.fromValues(50, 37.5), // position of the camera
-        100,                       // width of camera
-        [0, 0, 640, 480]           // viewport (orgX, orgY, width, height)
+        vec2.fromValues(100, 56.25), // position of the camera
+        200,                         // width of camera
+        [0, 0, 1280, 720]            // viewport (orgX, orgY, width, height)
     );
-    this.mCamera.setBackgroundColor([0.8, 0.8, 0.8, 1]);
+    this.mCamera.setBackgroundColor([0.7, 0.7, 0.7, 1]);
             // sets the background to gray
-
-    // the light
-    this._initializeLights();   // defined in MyGame_Lights.js
-
-    // the Background
-    var bgR = new IllumRenderable(this.kBg, this.kBgNormal);
-    bgR.setElementPixelPositions(0, 1024, 0, 1024);
-    bgR.getXform().setSize(100, 100);
-    bgR.getXform().setPosition(50, 35);
-    bgR.getMaterial().setSpecular([1, 0, 0, 1]);
-    var i; 
-    for (i = 0; i < 4; i++) {
-        bgR.addLight(this.mGlobalLightSet.getLightAt(i));   // all the lights
+    
+    gEngine.DefaultResources.setGlobalAmbientIntensity(3);
+    
+    // create a few objects ...
+    var i, j, rx, ry, obj, dy, dx;
+    dx = 80;
+    ry = Math.random() * 5 + 20;
+    for (i = 0; i<4; i++) {
+        rx = 20 + Math.random() * 160;
+        obj = new Minion(this.kMinionSprite, rx, ry);
+        this.mAllMinions.addToSet(obj);
+        
+        for (j=0; j<2; j++) {
+            rx = 20 + (j*dx) + Math.random() * dx;
+            dy = 10 * Math.random() - 5;
+            obj = new Platform(this.kPlatformTexture, rx, ry+dy);
+            this.mAllPlatforms.addToSet(obj);
+        }
+        
+        ry = ry + 20 + Math.random() * 10;
     }
-    this.mBg = new GameObject(bgR);
-
+    
+    // the floor and ceiling
+    rx = -15;
+    for (i = 0; i<9; i++) {
+        obj = new Platform(this.kPlatformTexture, rx, 2);
+        this.mAllPlatforms.addToSet(obj);
+        
+        obj = new Platform(this.kPlatformTexture, rx, 112);
+        this.mAllPlatforms.addToSet(obj);
+        rx += 30;
+    }
+    
+    // the left and right walls
+    ry = 12;
+    for (i = 0; i<8; i++) {
+        obj = new Wall(this.kWallTexture, 5, ry);
+        this.mAllPlatforms.addToSet(obj);
+        
+        obj = new Wall(this.kWallTexture, 195, ry);
+        this.mAllPlatforms.addToSet(obj);
+        ry += 16;
+    }
+    
     // 
-    // the objects
-    this.mIllumHero = new Hero(this.kMinionSprite, this.kMinionSpriteNormal, 20, 30);
-    this.mLgtHero = new Hero(this.kMinionSprite, null, 60, 50);
-    this.mIllumMinion = new Minion(this.kMinionSprite, this.kMinionSpriteNormal, 25, 30);
-    this.mIllumMinion.getXform().incSizeBy(20);
-    this.mLgtMinion = new Minion(this.kMinionSprite, null, 65, 25);
-    for (i = 0; i < 4; i++) {
-        this.mIllumHero.getRenderable().addLight(this.mGlobalLightSet.getLightAt(i));
-        this.mLgtHero.getRenderable().addLight(this.mGlobalLightSet.getLightAt(i));
-        this.mIllumMinion.getRenderable().addLight(this.mGlobalLightSet.getLightAt(i));
-        this.mLgtMinion.getRenderable().addLight(this.mGlobalLightSet.getLightAt(i));
-    }
-
-    this.mMsg = new FontRenderable("Status Message");
-    this.mMsg.setColor([1, 1, 1, 1]);
-    this.mMsg.getXform().setPosition(1, 2);
+    // the important objects
+    this.mHero = new Hero(this.kMinionSprite, 20, 30);   
+    
+    this.mMsg = new FontRenderable(this.kPrompt);
+    this.mMsg.setColor([0, 0, 0, 1]);
+    this.mMsg.getXform().setPosition(10, 110);
     this.mMsg.setTextHeight(3);
-
-    this.mMatMsg = new FontRenderable("Status Message");
-    this.mMatMsg.setColor([1, 1, 1, 1]);
-    this.mMatMsg.getXform().setPosition(1, 73);
-    this.mMatMsg.setTextHeight(3);
-
-    this.mBlock1 = new Renderable();
-    this.mBlock1.setColor([1, 0, 0, 1]);
-    this.mBlock1.getXform().setSize(5, 5);
-    this.mBlock1.getXform().setPosition(30, 50);
-
-    this.mBlock2 = new Renderable();
-    this.mBlock2.setColor([0, 1, 0, 1]);
-    this.mBlock2.getXform().setSize(5, 5);
-    this.mBlock2.getXform().setPosition(70, 50);
-
-    this.mSlectedCh = this.mIllumHero;
-    this.mMaterialCh = this.mSlectedCh.getRenderable().getMaterial().getDiffuse();
-    this.mSelectedChMsg = "H:";
-    
-    this._setupShadow();  // defined in MyGame_Shadow.js
-};
-
-
-MyGame.prototype.drawCamera = function (camera) {
-    // set up the View Projection matrix
-    camera.setupViewProjection();
-    
-    
-    // always draw shadow receivers first!
-    this.mBgShadow.draw(camera);        // also draws the receiver object
-    this.mMinionShadow.draw(camera);
-    this.mLgtMinionShaodw.draw(camera);
-    
-    this.mBlock1.draw(camera);
-    this.mIllumHero.draw(camera);
-    this.mBlock2.draw(camera);  
-    this.mLgtHero.draw(camera);
-    
 };
 
 // This is the draw function, make sure to setup proper drawing environment, and more
 // importantly, make sure to _NOT_ change any state.
 MyGame.prototype.draw = function () {
-    // Step A: clear the canvas
     gEngine.Core.clearCanvas([0.9, 0.9, 0.9, 1.0]); // clear to light gray
 
-    // Step  B: Draw with all three cameras
-    this.drawCamera(this.mCamera);
-    this.mMsg.draw(this.mCamera);   // only draw status in the main camera
-    this.mMatMsg.draw(this.mCamera);
+    this.mCamera.setupViewProjection();
+    
+    this.mAllPlatforms.draw(this.mCamera);
+    this.mAllMinions.draw(this.mCamera);
+    this.mAllDyePacks.draw(this.mCamera);
+    this.mHero.draw(this.mCamera);
+    this.mAllParticles.draw(this.mCamera);
+    this.mMsg.draw(this.mCamera);
 };
 
 // The Update function, updates the application state. Make sure to _NOT_ draw
 // anything from this function!
 MyGame.prototype.update = function () {
+    
+    var func = function(x, y) { this.createParticle.call(this, x, y); };
+    
     this.mCamera.update();  // to ensure proper interpolated movement effects
-
-    this.mIllumMinion.update(); // ensure sprite animation
-    this.mLgtMinion.update();
-
-    this.mIllumHero.update();  // allow keyboard control to move
-    this.mLgtHero.update();
-
-    // control the selected light
-    var msg = "L=" + this.mLgtIndex + " ";
-    msg += this._lightControl();
-    this.mMsg.setText(msg);
-
-    msg = this._selectCharacter();
-    msg += this.materialControl();
-    this.mMatMsg.setText(msg);
-
+    
+    this.mAllPlatforms.update();
+    this.mAllMinions.update();
+    this.mHero.update(this.mAllDyePacks, this.mAllParticles, this.createParticle);
+    this.mAllDyePacks.update();
+    this.mAllParticles.update();
+    
+    // create dye pack and remove the expired ones ...
+    if (gEngine.Input.isButtonClicked(gEngine.Input.mouseButton.Left)) {
+        if (this.mCamera.isMouseInViewport()) {
+            var d = new DyePack(this.kDyePackTexture, this.mCamera.mouseWCX(), this.mCamera.mouseWCY());
+            this.mAllDyePacks.addToSet(d);
+        }
+    }
+    
+    // create particles
+    if (gEngine.Input.isKeyPressed(gEngine.Input.keys.Z)) {
+        if (this.mCamera.isMouseInViewport()) {
+            var p = this.createParticle(this.mCamera.mouseWCX(), this.mCamera.mouseWCY());
+            this.mAllParticles.addToSet(p);
+        }
+    }
+    
+    // Cleanup DyePacks
+    var i, obj;
+    for (i=0; i<this.mAllDyePacks.size(); i++) {
+        obj = this.mAllDyePacks.getObjectAt(i);
+        if (obj.hasExpired()) {
+            this.mAllDyePacks.removeFromSet(obj);
+        }
+    }
+    
+    // physics simulation
+    this._physicsSimulation();
+    
+    this.mMsg.setText(this.kPrompt + ": DyePack=" + this.mAllDyePacks.size() +
+            " Particles=" + this.mAllParticles.size());
 };
 
-MyGame.prototype._selectCharacter = function () {
-    // select which character to work with
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Five)) {
-        this.mSlectedCh = this.mIllumMinion;
-        this.mMaterialCh = this.mSlectedCh.getRenderable().getMaterial().getDiffuse();
-        this.mSelectedChMsg = "L:";
-    }
-    if (gEngine.Input.isKeyClicked(gEngine.Input.keys.Six)) {
-        this.mSlectedCh = this.mIllumHero;
-        this.mMaterialCh = this.mSlectedCh.getRenderable().getMaterial().getDiffuse();
-        this.mSelectedChMsg = "H:";
-    }
-    return this.mSelectedChMsg;
+MyGame.prototype.createParticle = function(atX, atY) {
+    var life = 30 + Math.random() * 200;
+    var p = new ParticleGameObject("assets/particle.png", atX, atY, life);
+    p.getRenderable().setColor([1, 0, 0, 1]);
+    
+    // size of the particle
+    var r = 3.5 + Math.random() * 2.5;
+    p.getXform().setSize(r, r);
+    
+    // final color
+    var fr = 3.5 + Math.random();
+    var fg = 0.4 + 0.1 * Math.random();
+    var fb = 0.3 + 0.1 * Math.random();
+    p.setFinalColor([fr, fg, fb, 0.6]);
+    
+    // velocity on the particle
+    var fx = 10 * Math.random() - 20 * Math.random();
+    var fy = 10 * Math.random();
+    p.getPhysicsComponent().setVelocity([fx, fy]);
+    
+    // size delta
+    p.setSizeDelta(0.98);
+    
+    return p;
 };

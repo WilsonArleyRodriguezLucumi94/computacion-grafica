@@ -15,7 +15,7 @@ function ShadowCaster (shadowCaster, shadowReceiver) {
     this.mShadowCaster = shadowCaster;  
     this.mShadowReceiver = shadowReceiver;
     this.mCasterShader = gEngine.DefaultResources.getShadowCasterShader();
-    this.mShadowColor = [0, 0, 0, 0.2]; //SOMBRAS 5, 5, 5,
+    this.mShadowColor = [0, 0, 0, 0.2];
     this.mSaveXform = new Transform();
     
     this.kCasterMaxScale = 3;   // maximum size a caster will be scaled

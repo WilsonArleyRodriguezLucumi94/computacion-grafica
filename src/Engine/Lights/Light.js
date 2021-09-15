@@ -30,7 +30,7 @@ function Light() {
     this.mFar = 10;
     this.mInner = 0.1;  // in radian
     this.mOuter = 0.3;
-    this.mIntensity = 3;
+    this.mIntensity = 1;
     this.mDropOff = 1;  // 
     this.mLightType = Light.eLightType.ePointLight;
     this.mIsOn = true;
