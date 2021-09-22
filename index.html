@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>CAPITULO 9</title>
+        <title>CAPITULO 10</title>
         <link rel ="icon" type ="image/x-icon" href="favicon.png">
 
         <!-- the following says there are javascript source code contained in 
@@ -18,6 +18,7 @@
         <script type="text/javascript" src="src/Engine/Core/Engine_Input.js"></script>
         <script type="text/javascript" src="src/Engine/Core/Engine_Physics.js"></script>
         <script type="text/javascript" src="src/Engine/Core/Engine_Particle.js"></script>
+        <script type="text/javascript" src="src/Engine/Core/Engine_LayerManager.js"></script>
         <!-- Resource support -->
         <script type="text/javascript" src="src/Engine/Core/Resources/Engine_ResourceMap.js"></script>
         <script type="text/javascript" src="src/Engine/Core/Resources/Engine_TextFileLoader.js"></script>
@@ -57,6 +58,8 @@
         <script type="text/javascript" src="src/Engine/GameObjects/GameObject.js"></script>
         <script type="text/javascript" src="src/Engine/GameObjects/GameObject_PixelCollision.js"></script>
         <script type="text/javascript" src="src/Engine/GameObjects/GameObjectSet.js"></script>
+        <script type="text/javascript" src="src/Engine/GameObjects/TiledGameObject.js"></script>
+        <script type="text/javascript" src="src/Engine/GameObjects/ParallaxGameObject.js"></script>
         <!-- Particles -->
         <script type="text/javascript" src="src/Engine/Particles/Particle.js"></script>
         <script type="text/javascript" src="src/Engine/Particles/ParticleGameObject.js"></script>
@@ -90,13 +93,14 @@
 
         <!-- Client game code -->
         <script type="text/javascript" src="src/MyGame/MyGame.js"></script>
-        <script type="text/javascript" src="src/MyGame/MyGame_Physics.js"></script>
+        <script type="text/javascript" src="src/MyGame/MyGame_Lights.js"></script>
+        <script type="text/javascript" src="src/MyGame/MyGame_LightControl.js"></script>
+        <script type="text/javascript" src="src/MyGame/MyGame_MaterialControl.js"></script>
+        <script type="text/javascript" src="src/MyGame/MyGame_Shadow.js"></script>
         <!-- Objects -->
         <script type="text/javascript" src="src/MyGame/Objects/Hero.js"></script>
         <script type="text/javascript" src="src/MyGame/Objects/Minion.js"></script>
-        <script type="text/javascript" src="src/MyGame/Objects/Platform.js"></script>
-        <script type="text/javascript" src="src/MyGame/Objects/Wall.js"></script>
-        <script type="text/javascript" src="src/MyGame/Objects/DyePack.js"></script> 
+
     </head>
 
     <body onload="
