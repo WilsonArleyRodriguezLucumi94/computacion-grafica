@@ -56,4 +56,9 @@ ShadowReceiver.prototype.draw = function (aCamera) {
     // switch off stencil checking
     this._shadowRecieverStencilDisable();
 };
+
+// 
+ShadowReceiver.prototype.update = function () {
+    this.mReceiver.update();
+};
 // </editor-fold>

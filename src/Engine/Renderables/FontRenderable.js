@@ -77,5 +77,8 @@ FontRenderable.prototype.setFont = function (f) {
 
 FontRenderable.prototype.setColor = function (c) { this.mOneChar.setColor(c); };
 FontRenderable.prototype.getColor = function () { return this.mOneChar.getColor(); };
+
+FontRenderable.prototype.update = function () {};
+
 //--- end of Public Methods
 //</editor-fold>

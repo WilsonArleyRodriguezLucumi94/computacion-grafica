@@ -25,7 +25,7 @@ function RigidShape(xform) {
     
     // physical properties
     this.mInvMass = 1;
-    this.mRestitution = 0.8;//aumenta la velocidad luego de la colicion 5
+    this.mRestitution = 0.8;
     this.mVelocity = vec2.fromValues(0, 0);
     this.mFriction = 0.3;
     this.mAcceleration = gEngine.Physics.getSystemtAcceleration();
